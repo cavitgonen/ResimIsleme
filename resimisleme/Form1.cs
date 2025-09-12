@@ -80,25 +80,37 @@ namespace resimkucult
 
                 if (chckPDF.Checked)
                 {
-
-                    string pdfPath = klasor;
-                    string outputDir = klasor + @"\jpg\";
-
-
+                    string outputDir = Path.Combine(klasor, "jpg");
                     if (!Directory.Exists(outputDir))
-                    {
                         Directory.CreateDirectory(outputDir);
-                    }
+
                     foreach (string file in files)
                     {
-                        string[] file_ = file.ToString().Split('\\');
-                        string dosyaadi = file_[file_.Length - 1].Replace("pdf", "jpg");
-                        // PDF dosyasını aç
-                        List<System.Drawing.Image> images = PdfSplitter.GetImages(file, PdfSplitter.Scale.Low);
+                        if (!file.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+                            continue;
 
-                        PdfSplitter.WriteImages(file, outputDir, PdfSplitter.Scale.High, PdfSplitter.CompressionLevel.Medium);
+                        try
+                        {
+                            // Belleğe tüm sayfaları ALMADAN diske yazdırır:
+                            PdfSplitter.WriteImages(
+                                file,
+                                outputDir,
+                                PdfSplitter.Scale.High,                 // kalite/dpi ayarı
+                                PdfSplitter.CompressionLevel.Medium     // dosya boyutu/kalite dengesi
+                            );
+                        }
+                        catch (Exception ex)
+                        {
+                            // İsteğe bağlı loglayın
+                            Console.WriteLine($"PDF dönüştürme hatası: {Path.GetFileName(file)} -> {ex.Message}");
+                        }
+
+                        // Çok uzun işlerde atık topla (zorunlu değil ama faydalı olabilir)
+                        GC.Collect();
+                        GC.WaitForPendingFinalizers();
                     }
                 }
+
 
             }
 
