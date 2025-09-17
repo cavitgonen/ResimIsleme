@@ -27,6 +27,13 @@ namespace resimkucult
 
         private void Form1_Load(object sender, EventArgs e)
         {
+
+            string mod = ini.Oku("ayar", "mod").ToString();
+            if (mod == "dosya")
+            {
+                chckDosyaMod.Checked = true;
+            }
+
             File.WriteAllBytes(Application.StartupPath + @"\gsdll64.dll", Properties.Resources.gsdll64);
             File.WriteAllBytes(Application.StartupPath + @"\gswin64c.exe", Properties.Resources.gswin64c);
 
@@ -130,9 +137,10 @@ namespace resimkucult
                 DialogResult dr = folderBrowserDialog1.ShowDialog();
                 if (DialogResult.Cancel == dr)
                 {
+                    txtList.Text = "eee neden vazgeçtik !?";
                     return;
                 }
-                txtList.Text = "İşlem yapılıyor!";
+                txtList.Text = "eveettt Başlıyoruzzz...";
                 await Task.Delay(1000);
 
                 var SecilenDirectory = folderBrowserDialog1.SelectedPath;
@@ -141,7 +149,7 @@ namespace resimkucult
             else
             {
 
-                txtList.Text = "İşlem yapılıyor!";
+                txtList.Text = "Çok şükür başladık, daha seri hareketler..";
                 await Task.Delay(1000);
                 openFileDialog1.Multiselect = true;
                 openFileDialog1.Filter = "Resim Dosyaları|*.jpg;*.jpeg;*.heic;*.pdf|Tüm Dosyalar|*.*";
@@ -150,6 +158,7 @@ namespace resimkucult
                 DialogResult dr = openFileDialog1.ShowDialog();
                 if (DialogResult.Cancel == dr)
                 {
+                    txtList.Text = "Bişeyi de beceremedin...";
                     return;
                 }
                 var SecilenFile = openFileDialog1.FileName;
@@ -222,7 +231,7 @@ namespace resimkucult
 
             string parent = Path.GetDirectoryName(rootFolder);
             string folderName = Path.GetFileName(rootFolder);
-            string outputRoot = Path.Combine(parent ?? "", folderName + "_jpg");
+            string outputRoot = Path.Combine(rootFolder ?? "", "jpg");
 
             // Kök + alt klasörler
             var tumKlasorler = Directory.EnumerateDirectories(rootFolder, "*", SearchOption.AllDirectories)
@@ -289,8 +298,8 @@ namespace resimkucult
             Log($"Seçilen klasör: {rootFolder}");
 
 
-            string outputRoot = Path.Combine(rootFolder + "_jpg");
-
+            string folderName = Path.GetFileName(rootFolder);
+            string outputRoot = Path.Combine(rootFolder ?? "", "jpg");
 
             foreach (var file in files)
             {
@@ -731,6 +740,20 @@ namespace resimkucult
             catch
             {
             }
+        }
+        string mod = "";
+        private void chckDosyaMod_Click(object sender, EventArgs e)
+        {
+            if (chckDosyaMod.Checked)
+            {
+                mod = "dosya";
+            }
+            else
+            {
+                mod = "klasor";
+            }
+
+            ini.Yaz("ayar", "mod", mod);
         }
     }
 }

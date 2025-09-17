@@ -246,12 +246,13 @@
             // chckDosyaMod
             // 
             this.chckDosyaMod.AutoSize = true;
-            this.chckDosyaMod.Location = new System.Drawing.Point(172, 213);
+            this.chckDosyaMod.Location = new System.Drawing.Point(170, 213);
             this.chckDosyaMod.Name = "chckDosyaMod";
             this.chckDosyaMod.Size = new System.Drawing.Size(86, 17);
             this.chckDosyaMod.TabIndex = 25;
             this.chckDosyaMod.Text = "Dosya Modu";
             this.chckDosyaMod.UseVisualStyleBackColor = true;
+            this.chckDosyaMod.Click += new System.EventHandler(this.chckDosyaMod_Click);
             // 
             // Form1
             // 
