@@ -3,10 +3,13 @@ using Pdf2Image;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Runtime;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Encoder = System.Drawing.Imaging.Encoder;
@@ -22,7 +25,8 @@ namespace resimkucult
 
         private void Form1_Load(object sender, EventArgs e)
         {
-
+            File.WriteAllBytes(Application.StartupPath + @"\gsdll64.dll", Properties.Resources.gsdll64);
+            File.WriteAllBytes(Application.StartupPath + @"\gswin64c.exe", Properties.Resources.gswin64c);
         }
         FileInfo dosya;
 
@@ -35,95 +39,158 @@ namespace resimkucult
         [Obsolete]
         private async void btnkucult_Click(object sender, EventArgs e)
         {
-
-
-            if (!chckkucult.Checked && !chckHeicJpg.Checked && !chckPDF.Checked && !radioButton45Sag.Checked && !radioButton45Sol.Checked)
+            if (!chckBmptoJpg.Checked && !chckkucult.Checked && !chckHeicJpg.Checked && !chckPDF.Checked && !radioButton45Sag.Checked && !radioButton45Sol.Checked)
             {
                 MessageBox.Show("Lütfen bir işlem seçiniz!");
                 return;
             }
 
-            openFileDialog1.FileName = string.Empty;
-            DialogResult dr = openFileDialog1.ShowDialog();
+            DialogResult dr = folderBrowserDialog1.ShowDialog();
             if (DialogResult.Cancel == dr)
             {
                 return;
             }
             txtList.Text = "İşlem yapılıyor!";
             await Task.Delay(1000);
-            openFileDialog1.Multiselect = true;
-            openFileDialog1.Filter = "Resim Dosyaları|*.jpg;*.jpeg;*.png;*.heic;*.pdf|Tüm Dosyalar|*.*";
-            openFileDialog1.Title = "Resim Dosyası Seçiniz";
 
-            var SecilenFile = openFileDialog1.FileName;
-            var SecilenFiles = openFileDialog1.FileNames;
-            SecilenKlasor = Path.GetDirectoryName(SecilenFile);
-            await islemyap(SecilenFiles, SecilenKlasor);
+            var SecilenDirectory = folderBrowserDialog1.SelectedPath;
+            await islemyap(SecilenDirectory);
             await Task.Delay(1000);
             txtList.Text = "İşlem tamamlandı!";
         }
 
+        private readonly SemaphoreSlim _pdfSemaphore = new SemaphoreSlim(1, 1);
+
         [Obsolete]
-        private async Task islemyap(string[] files, string klasor)
+        private async Task RunProcessAsync(string fileName, string arguments)
         {
+            var psi = new ProcessStartInfo
+            {
+                FileName = fileName,
+                Arguments = arguments,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            using (var p = new Process { StartInfo = psi, EnableRaisingEvents = true })
+            {
+                var tcs = new TaskCompletionSource<int>();
+                p.OutputDataReceived += (s, e) => { if (!string.IsNullOrEmpty(e.Data)) Log($"[{fileName}] {e.Data}"); };
+                p.ErrorDataReceived += (s, e) => { if (!string.IsNullOrEmpty(e.Data)) Log($"[{fileName} ERR] {e.Data}"); };
+
+                if (!p.Start())
+                    throw new InvalidOperationException($"{fileName} başlatılamadı.");
+
+                p.BeginOutputReadLine();
+                p.BeginErrorReadLine();
+
+                p.Exited += (s, e) => tcs.TrySetResult(p.ExitCode);
+                int exit = await tcs.Task;
+
+                if (exit != 0)
+                    throw new Exception($"{fileName} çıkış kodu: {exit}");
+            }
+        }
+
+        [Obsolete]
+        private async Task ConvertPdfWithGhostscriptAsync(string pdfPath, string outputRoot, int dpi = 200, int quality = 85)
+        {
+            string nameNoExt = Path.GetFileNameWithoutExtension(pdfPath);
+            string outPattern = Path.Combine(outputRoot, nameNoExt + "_p%03d.jpg");
+
+            // -dJPEGQ=85 kalite, -r200 DPI, -sDEVICE=jpeg, -o out_p%03d.jpg
+            string args = $"-dNOPAUSE -dBATCH -sDEVICE=jpeg -dJPEGQ={quality} -r{dpi} -o \"{outPattern}\" \"{pdfPath}\"";
+
+            await RunProcessAsync("gswin64c", args);
+        }
+        private async Task islemyap(string rootFolder)
+        {
+            if (string.IsNullOrWhiteSpace(rootFolder) || !Directory.Exists(rootFolder))
+            {
+                MessageBox.Show("Geçerli bir klasör seçmedin.");
+                return;
+            }
+
             txtList.Text = "";
-            if (chckkucult.Checked)
+            Log($"Seçilen klasör: {rootFolder}");
+
+            string parent = Path.GetDirectoryName(rootFolder);
+            string folderName = Path.GetFileName(rootFolder);
+            string outputRoot = Path.Combine(parent ?? "", folderName + "_jpg");
+
+            // Kök + alt klasörler
+            var tumKlasorler = Directory.EnumerateDirectories(rootFolder, "*", SearchOption.AllDirectories)
+                                        .Prepend(rootFolder);
+
+            foreach (var klasor in tumKlasorler)
             {
-                islem("kucult", files, klasor);
-            }
-            else if (chckHeicJpg.Checked)
-            {
-                islem(klasor);
-            }
-            else
-            {
+                Log($"▶ Klasör: {klasor}");
 
                 if (chckPDF.Checked)
                 {
-                    string outputDir = Path.Combine(klasor, "jpg");
-                    if (!Directory.Exists(outputDir))
-                        Directory.CreateDirectory(outputDir);
+                    Directory.CreateDirectory(outputRoot);
 
-                    foreach (string file in files)
+                    var pdfler = Directory.EnumerateFiles(klasor, "*.pdf", SearchOption.TopDirectoryOnly);
+                    foreach (var pdf in pdfler)
                     {
-                        if (!file.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
-                            continue;
-
                         try
                         {
-                            // Belleğe tüm sayfaları ALMADAN diske yazdırır:
-                            PdfSplitter.WriteImages(
-                                file,
-                                outputDir,
-                                PdfSplitter.Scale.High,                 // kalite/dpi ayarı
-                                PdfSplitter.CompressionLevel.Medium     // dosya boyutu/kalite dengesi
-                            );
+                            // Önce ImageMagick dene, yoksa Ghostscript'e düş
+                            try
+                            {
+                                await ConvertPdfWithGhostscriptAsync(pdf, outputRoot, dpi: 200, quality: 85);
+                            }
+                            catch (Exception)
+                            {
+                                //await ConvertPdfWithMagickAsync(pdf, outputRoot, dpi: 200, quality: 85);
+                            }
+
+                            Log($"  ✓ {Path.GetFileName(pdf)} dönüştürüldü.");
                         }
                         catch (Exception ex)
                         {
-                            // İsteğe bağlı loglayın
-                            Console.WriteLine($"PDF dönüştürme hatası: {Path.GetFileName(file)} -> {ex.Message}");
+                            Log($"  ✗ {Path.GetFileName(pdf)} hata: {ex.Message}");
                         }
-
-                        // Çok uzun işlerde atık topla (zorunlu değil ama faydalı olabilir)
-                        GC.Collect();
-                        GC.WaitForPendingFinalizers();
                     }
                 }
 
-
+                // Diğer işlemlerin (HEIC→JPG, BMP→JPG, küçültme, 45° çevir) aynen kalabilir
+                try
+                {
+                    if (chckHeicJpg.Checked) await Task.Run(() => islem(klasor));
+                    if (chckBmptoJpg.Checked) await Task.Run(() => islem("bmp", klasor));
+                    if (chckkucult.Checked) await Task.Run(() => islem("kucult", klasor));
+                    if (radioButton45Sag.Checked) await Task.Run(() => islem("sagacevir", klasor));
+                    if (radioButton45Sol.Checked) await Task.Run(() => islem("solacevir", klasor));
+                }
+                catch (Exception ex2)
+                {
+                    Log(" - İşlem hatası: " + ex2.Message);
+                }
             }
 
-            if (radioButton45Sag.Checked)
+            Log("✅ Tamam: " + outputRoot);
+        }
+
+        // UI log helper
+        private void Log(string msg)
+        {
+            if (txtList.InvokeRequired)
             {
-                islem("sagacevir", files, klasor);
+                txtList.BeginInvoke(new Action(() =>
+                {
+                    txtList.AppendText(msg + Environment.NewLine);
+                }));
             }
-            if (radioButton45Sol.Checked)
+            else
             {
-                islem("solacevir", files, klasor);
+                txtList.AppendText(msg + Environment.NewLine);
             }
         }
-        private void islem(string islem, string[] files, string klasor)
+
+        private void islem(string islem, string klasor)
         {
             try
             {
@@ -136,15 +203,47 @@ namespace resimkucult
                                             //                                      file.ToLower().EndsWith("jpg") ||
                                             //                                      file.ToLower().EndsWith("png"))
                                             //                       .ToArray();
-
-                foreach (string file in files)
+                string[] seçilendosya = Directory.GetFiles(klasor);
+                foreach (string file in seçilendosya)
                 {
                     //File.Move(file, file.Replace(".jpeg", ".jpg"));
                     string tempFileName = Path.Combine(folderPath, "temp_" + Path.GetFileName(file));
 
                     using (Bitmap bitmap = new Bitmap(file))
                     {
-                        if (islem == "kucult")
+
+                        if (islem == "bmp")
+                        {
+
+                            // Klasördeki tüm BMP dosyalarını al
+                            string[] bmpDosyalar = Directory.GetFiles(klasor, "*.bmp", SearchOption.TopDirectoryOnly);
+
+                            foreach (string bmpYolu in bmpDosyalar)
+                            {
+                                try
+                                {
+                                    // Dosya adı (uzantısız)
+                                    string dosyaAdi = Path.GetFileNameWithoutExtension(bmpYolu);
+
+                                    // Hedef jpg yolu
+                                    Directory.CreateDirectory(klasor + @"\jpg");
+                                    string jpgYolu = Path.Combine(klasor + @"\jpg", dosyaAdi + ".jpg");
+
+                                    // BMP'yi yükle ve JPG olarak kaydet
+                                    using (Image img = Image.FromFile(bmpYolu))
+                                    {
+                                        img.Save(jpgYolu, ImageFormat.Jpeg);
+                                    }
+
+                                    Console.WriteLine($"Dönüştürüldü: {bmpYolu} → {jpgYolu}");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"Hata ({bmpYolu}): {ex.Message}");
+                                }
+                            }
+                        }
+                        else if (islem == "kucult")
                         {
                             if (bitmap.Width > bitmap.Height) // Yatay form
                             {
@@ -211,7 +310,7 @@ namespace resimkucult
                 }
                 txtList.Text = "İşlem Tamamlandı..";
             }
-            catch { txtList.Text = "Hata Oluştu!"; }
+            catch { }
         }
 
         private void islem(string klasor)
@@ -226,7 +325,7 @@ namespace resimkucult
                 // JPG'lerin kaydedileceği klasör
                 string outputFolder = Path.Combine(inputFolder, "jpg");
 
-                // Çıktı klasörünü oluştur
+                //// Çıktı klasörünü oluştur
                 if (!Directory.Exists(outputFolder))
                     Directory.CreateDirectory(outputFolder);
 
