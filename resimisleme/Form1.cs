@@ -9,9 +9,11 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 using Encoder = System.Drawing.Imaging.Encoder;
 
 namespace resimkucult
@@ -27,7 +29,39 @@ namespace resimkucult
         {
             File.WriteAllBytes(Application.StartupPath + @"\gsdll64.dll", Properties.Resources.gsdll64);
             File.WriteAllBytes(Application.StartupPath + @"\gswin64c.exe", Properties.Resources.gswin64c);
+            
         }
+
+        private void baglan()
+        {
+            string driveLetter = "Z:";
+            string pcname = ini.Oku("Ayarlar", "pcname").ToString();
+            string paylasimadi = ini.Oku("Ayarlar", "paylasimadi").ToString();
+            string username = ini.Oku("Ayarlar", "kullaniciadi").ToString();
+            string password = ini.Oku("Ayarlar", "parola").ToString();
+
+            txtKullaniciAdi.Text = username;
+            txtBilgisayarAdi.Text = pcname;
+            txtPaylasimAdi.Text = paylasimadi;
+            SecilenPath = Application.StartupPath + @"\config.ini";
+            SecilenKlasor = ini.Oku("klasor", "klasor").ToString();
+            folderBrowserDialog1.SelectedPath = SecilenKlasor;
+            string networkPath = @"\\" + pcname + @"\" + paylasimadi;
+
+            if (NetworkDrive.Connect(driveLetter, @"\\tarama\kbm", username, password))
+            {
+                Console.WriteLine("Bağlantı başarılı!");
+                MessageBox.Show(pcname + " bilgisayarı için " + driveLetter + " disk'i oluşturuldu.");
+            }
+            else
+            {
+                Console.WriteLine("Bağlantı başarısız!");
+            }
+
+            // İş bitince bağlantıyı kapatabilirsin:
+            // NetworkDrive.Disconnect(driveLetter);
+        }
+
         FileInfo dosya;
 
         public string newFileName { get; private set; }
@@ -35,6 +69,52 @@ namespace resimkucult
         public int newHeight { get; private set; }
         public string SecilenPath { get; private set; }
         public string SecilenKlasor { get; private set; }
+
+        class NetworkDrive
+        {
+            [DllImport("mpr.dll")]
+            private static extern int WNetAddConnection2(ref NETRESOURCE netResource,
+                                                         string password,
+                                                         string username,
+                                                         int flags);
+
+            [DllImport("mpr.dll")]
+            private static extern int WNetCancelConnection2(string name, int flags, bool force);
+
+            [StructLayout(LayoutKind.Sequential)]
+            private struct NETRESOURCE
+            {
+                public int dwScope;
+                public int dwType;
+                public int dwDisplayType;
+                public int dwUsage;
+                public string lpLocalName;   // Atanacak sürücü harfi (örn. Z:)
+                public string lpRemoteName;  // UNC yol (örn. \\192.168.1.10\paylasim)
+                public string lpComment;
+                public string lpProvider;
+            }
+
+            public static bool Connect(string driveLetter, string networkPath, string username, string password)
+            {
+                NETRESOURCE nr = new NETRESOURCE
+                {
+                    dwType = 1, // RESOURCETYPE_DISK
+                    lpLocalName = driveLetter,
+                    lpRemoteName = networkPath
+                };
+
+                // flags = 0 → bağlan, 1 → geçerli oturumda kalıcı bağlanır
+                int result = WNetAddConnection2(ref nr, password, username, 0);
+
+                return result == 0;
+            }
+
+            public static bool Disconnect(string driveLetter)
+            {
+                int result = WNetCancelConnection2(driveLetter, 0, true);
+                return result == 0;
+            }
+        }
 
         [Obsolete]
         private async void btnkucult_Click(object sender, EventArgs e)
@@ -285,14 +365,14 @@ namespace resimkucult
                             {
                                 jpgEncoder = GetEncoder(ImageFormat.Jpeg);
                                 encoderParameters = new EncoderParameters(1);
-                                EncoderParameter qualityParam = new EncoderParameter(Encoder.Quality, 90L);
+                                EncoderParameter qualityParam = new EncoderParameter(Encoder.Quality, 50L);
                                 encoderParameters.Param[0] = qualityParam;
                             }
                             else
                             {
                                 jpgEncoder = GetEncoder(ImageFormat.Jpeg);
                                 encoderParameters = new EncoderParameters(1);
-                                EncoderParameter qualityParam = new EncoderParameter(Encoder.Quality, 90L);
+                                EncoderParameter qualityParam = new EncoderParameter(Encoder.Quality, 50L);
                                 encoderParameters.Param[0] = qualityParam;
                             }
                             newBitmap.SetResolution(100, 100);
@@ -391,15 +471,32 @@ namespace resimkucult
             }
             return null;
         }
-
-        private void chckkucult_Click(object sender, EventArgs e)
+        private void btnAyarKaydet_Click(object sender, EventArgs e)
         {
+            try
+            {
+                ini.Yaz(SecilenPath, "klasor", SecilenKlasor);
+                ini.Yaz("Ayarlar", "kullaniciadi", txtKullaniciAdi.Text);
+                ini.Yaz("Ayarlar", "parola", txtParola.Text);
+                ini.Yaz("Ayarlar", "pcname", txtBilgisayarAdi.Text);
+                ini.Yaz("Ayarlar", "paylasimadi", txtPaylasimAdi.Text);
+                string networkPath = @"\\" + txtBilgisayarAdi.Text + @"\" + txtPaylasimAdi.Text;
+                string networkPath1 = @"\\tarama\2024-2025 kbm";
 
-        }
-
-        private void chckPDF_Click(object sender, EventArgs e)
-        {
-            chckkucult.Checked = false;
+                if (NetworkDrive.Connect("K", @"\\tarama\2024-2025 kbm", txtKullaniciAdi.Text, txtParola.Text))
+                {
+                    Console.WriteLine("Bağlantı başarılı!");
+                    MessageBox.Show(txtBilgisayarAdi.Text + " bilgisayarı için " + "Z" + " disk'i oluşturuldu.");
+                    MessageBox.Show("Ayarlar kaydedildi.");
+                }
+                else
+                {
+                    Console.WriteLine("Bağlantı başarısız!");
+                }
+            }
+            catch
+            {
+            }
         }
     }
 }
