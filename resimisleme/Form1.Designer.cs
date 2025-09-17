@@ -49,15 +49,16 @@
             this.txtParola = new System.Windows.Forms.TextBox();
             this.txtKullaniciAdi = new System.Windows.Forms.TextBox();
             this.btnAyarKaydet = new System.Windows.Forms.Button();
+            this.chckDosyaMod = new System.Windows.Forms.CheckBox();
             this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // btnkucult
             // 
             this.btnkucult.Font = new System.Drawing.Font("Microsoft Sans Serif", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(162)));
-            this.btnkucult.Location = new System.Drawing.Point(12, 217);
+            this.btnkucult.Location = new System.Drawing.Point(12, 231);
             this.btnkucult.Name = "btnkucult";
-            this.btnkucult.Size = new System.Drawing.Size(399, 51);
+            this.btnkucult.Size = new System.Drawing.Size(398, 37);
             this.btnkucult.TabIndex = 0;
             this.btnkucult.Text = "Başlat";
             this.btnkucult.UseVisualStyleBackColor = true;
@@ -242,11 +243,22 @@
             this.btnAyarKaydet.UseVisualStyleBackColor = true;
             this.btnAyarKaydet.Click += new System.EventHandler(this.btnAyarKaydet_Click);
             // 
+            // chckDosyaMod
+            // 
+            this.chckDosyaMod.AutoSize = true;
+            this.chckDosyaMod.Location = new System.Drawing.Point(172, 213);
+            this.chckDosyaMod.Name = "chckDosyaMod";
+            this.chckDosyaMod.Size = new System.Drawing.Size(86, 17);
+            this.chckDosyaMod.TabIndex = 25;
+            this.chckDosyaMod.Text = "Dosya Modu";
+            this.chckDosyaMod.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(423, 427);
+            this.Controls.Add(this.chckDosyaMod);
             this.Controls.Add(this.btnAyarKaydet);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.label4);
@@ -296,6 +308,7 @@
         private System.Windows.Forms.TextBox txtParola;
         private System.Windows.Forms.TextBox txtKullaniciAdi;
         private System.Windows.Forms.Button btnAyarKaydet;
+        private System.Windows.Forms.CheckBox chckDosyaMod;
     }
 }
 

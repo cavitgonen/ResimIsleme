@@ -29,7 +29,7 @@ namespace resimkucult
         {
             File.WriteAllBytes(Application.StartupPath + @"\gsdll64.dll", Properties.Resources.gsdll64);
             File.WriteAllBytes(Application.StartupPath + @"\gswin64c.exe", Properties.Resources.gswin64c);
-            
+
         }
 
         private void baglan()
@@ -125,16 +125,40 @@ namespace resimkucult
                 return;
             }
 
-            DialogResult dr = folderBrowserDialog1.ShowDialog();
-            if (DialogResult.Cancel == dr)
+            if (!chckDosyaMod.Checked)
             {
-                return;
-            }
-            txtList.Text = "İşlem yapılıyor!";
-            await Task.Delay(1000);
+                DialogResult dr = folderBrowserDialog1.ShowDialog();
+                if (DialogResult.Cancel == dr)
+                {
+                    return;
+                }
+                txtList.Text = "İşlem yapılıyor!";
+                await Task.Delay(1000);
 
-            var SecilenDirectory = folderBrowserDialog1.SelectedPath;
-            await islemyap(SecilenDirectory);
+                var SecilenDirectory = folderBrowserDialog1.SelectedPath;
+                await islemyap(SecilenDirectory);
+            }
+            else
+            {
+
+                txtList.Text = "İşlem yapılıyor!";
+                await Task.Delay(1000);
+                openFileDialog1.Multiselect = true;
+                openFileDialog1.Filter = "Resim Dosyaları|*.jpg;*.jpeg;*.heic;*.pdf|Tüm Dosyalar|*.*";
+                openFileDialog1.Title = "Resim Dosyası Seçiniz";
+                openFileDialog1.FileName = string.Empty;
+                DialogResult dr = openFileDialog1.ShowDialog();
+                if (DialogResult.Cancel == dr)
+                {
+                    return;
+                }
+                var SecilenFile = openFileDialog1.FileName;
+                var SecilenFiles = openFileDialog1.FileNames;
+                SecilenKlasor = Path.GetDirectoryName(SecilenFile);
+                await islemyap(SecilenFiles, SecilenKlasor);
+            }
+
+
             await Task.Delay(1000);
             txtList.Text = "İşlem tamamlandı!";
         }
@@ -178,7 +202,7 @@ namespace resimkucult
         private async Task ConvertPdfWithGhostscriptAsync(string pdfPath, string outputRoot, int dpi = 200, int quality = 85)
         {
             string nameNoExt = Path.GetFileNameWithoutExtension(pdfPath);
-            string outPattern = Path.Combine(outputRoot, nameNoExt + "_p%03d.jpg");
+            string outPattern = Path.Combine(outputRoot, nameNoExt + ".jpg");
 
             // -dJPEGQ=85 kalite, -r200 DPI, -sDEVICE=jpeg, -o out_p%03d.jpg
             string args = $"-dNOPAUSE -dBATCH -sDEVICE=jpeg -dJPEGQ={quality} -r{dpi} -o \"{outPattern}\" \"{pdfPath}\"";
@@ -253,8 +277,69 @@ namespace resimkucult
 
             Log("✅ Tamam: " + outputRoot);
         }
+        private async Task islemyap(string[] files, string rootFolder)
+        {
+            if (string.IsNullOrWhiteSpace(rootFolder) || !Directory.Exists(rootFolder))
+            {
+                MessageBox.Show("Geçerli bir klasör seçmedin.");
+                return;
+            }
 
-        // UI log helper
+            txtList.Text = "";
+            Log($"Seçilen klasör: {rootFolder}");
+
+
+            string outputRoot = Path.Combine(rootFolder + "_jpg");
+
+
+            foreach (var file in files)
+            {
+                await Task.Delay(500);
+                Log($"▶ Dosya: {file}");
+
+                if (chckPDF.Checked)
+                {
+                    Directory.CreateDirectory(outputRoot);
+
+
+                    try
+                    {
+                        // Önce ImageMagick dene, yoksa Ghostscript'e düş
+                        try
+                        {
+                            await ConvertPdfWithGhostscriptAsync(file, outputRoot, dpi: 200, quality: 85);
+                        }
+                        catch (Exception)
+                        {
+                            //await ConvertPdfWithMagickAsync(pdf, outputRoot, dpi: 200, quality: 85);
+                        }
+
+                        Log($"  ✓ {Path.GetFileName(file)} dönüştürüldü.");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"  ✗ {Path.GetFileName(file)} hata: {ex.Message}");
+                    }
+
+                }
+
+                // Diğer işlemlerin (HEIC→JPG, BMP→JPG, küçültme, 45° çevir) aynen kalabilir
+                try
+                {
+                    if (chckHeicJpg.Checked) await Task.Run(() => HeicDonustur(rootFolder, files));
+                    if (chckBmptoJpg.Checked) await Task.Run(() => islem("bmp", rootFolder, file));
+                    if (chckkucult.Checked) await Task.Run(() => islem("kucult", rootFolder, file));
+                    if (radioButton45Sag.Checked) await Task.Run(() => islem("sagacevir", rootFolder, file));
+                    if (radioButton45Sol.Checked) await Task.Run(() => islem("solacevir", rootFolder, file));
+                }
+                catch (Exception ex2)
+                {
+                    Log(" - İşlem hatası: " + ex2.Message);
+                }
+            }
+
+            Log("✅ Tamam: " + outputRoot);
+        }
         private void Log(string msg)
         {
             if (txtList.InvokeRequired)
@@ -269,7 +354,6 @@ namespace resimkucult
                 txtList.AppendText(msg + Environment.NewLine);
             }
         }
-
         private void islem(string islem, string klasor)
         {
             try
@@ -355,6 +439,7 @@ namespace resimkucult
                             }
                             if (islem == "solacevir")
                             {
+
                                 newBitmap.RotateFlip(RotateFlipType.Rotate270FlipNone);
                             }
 
@@ -392,7 +477,124 @@ namespace resimkucult
             }
             catch { }
         }
+        private void islem(string islem, string klasor, string file)
+        {
+            try
+            {
+                int targetWidth = 1024;
+                int targetHeight = 768;
+                string folderPath = klasor; // Resim dosyalarının bulunduğu klasörün yolu
+                                            // Klasördeki tüm jpg dosyalarını al
+                                            //string[] files = Directory.GetFiles(folderPath, "*.*")
+                                            //                       .Where(file => file.ToLower().EndsWith("jpeg") ||
+                                            //                                      file.ToLower().EndsWith("jpg") ||
+                                            //                                      file.ToLower().EndsWith("png"))
+                                            //                       .ToArray();
+                                            //File.Move(file, file.Replace(".jpeg", ".jpg"));
+                string tempFileName = Path.Combine(folderPath, "temp_" + Path.GetFileName(file));
 
+                using (Bitmap bitmap = new Bitmap(file))
+                {
+
+                    if (islem == "bmp")
+                    {
+
+                        // Klasördeki tüm BMP dosyalarını al
+
+
+
+                        try
+                        {
+                            // Dosya adı (uzantısız)
+                            string dosyaAdi = Path.GetFileNameWithoutExtension(file);
+
+                            // Hedef jpg yolu
+                            Directory.CreateDirectory(klasor + @"\jpg");
+                            string jpgYolu = Path.Combine(klasor + @"\jpg", dosyaAdi + ".jpg");
+
+                            // BMP'yi yükle ve JPG olarak kaydet
+                            using (Image img = Image.FromFile(file))
+                            {
+                                img.Save(jpgYolu, ImageFormat.Jpeg);
+                            }
+
+                            Console.WriteLine($"Dönüştürüldü: {file} → {jpgYolu}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Hata ({file}): {ex.Message}");
+                        }
+
+                    }
+                    else if (islem == "kucult")
+                    {
+                        if (bitmap.Width > bitmap.Height) // Yatay form
+                        {
+                            newWidth = targetWidth;
+                            newHeight = (int)(bitmap.Height * (float)targetWidth / bitmap.Width);
+                        }
+                        else // Dikey form
+                        {
+                            newHeight = targetHeight;
+                            newWidth = (int)(bitmap.Width * (float)targetHeight / bitmap.Height);
+                        }
+                        // Yeni boyutları hesapla (%50 oranında küçültme)
+                        //newWidth = (int)(bitmap.Width * 0.5);
+                        //newHeight = (int)(bitmap.Height * 0.5);
+
+                        bitmap.Save(tempFileName);
+                    }
+                    else
+                    {
+                        newWidth = (int)(bitmap.Width);
+                        newHeight = (int)(bitmap.Height);
+                    }
+
+                    using (Bitmap newBitmap = new Bitmap(bitmap, newWidth, newHeight)) //boyut değiştir
+                    {
+
+                        if (islem == "sagacevir")
+                        {
+                            newBitmap.RotateFlip(RotateFlipType.Rotate90FlipNone);
+                        }
+                        if (islem == "solacevir")
+                        {
+                            newBitmap.RotateFlip(RotateFlipType.Rotate270FlipNone);
+                        }
+
+
+                        ImageCodecInfo jpgEncoder;
+                        EncoderParameters encoderParameters;
+                        if (islem == "kucult")
+                        {
+                            jpgEncoder = GetEncoder(ImageFormat.Jpeg);
+                            encoderParameters = new EncoderParameters(1);
+                            EncoderParameter qualityParam = new EncoderParameter(Encoder.Quality, 50L);
+                            encoderParameters.Param[0] = qualityParam;
+                        }
+                        else
+                        {
+                            jpgEncoder = GetEncoder(ImageFormat.Jpeg);
+                            encoderParameters = new EncoderParameters(1);
+                            EncoderParameter qualityParam = new EncoderParameter(Encoder.Quality, 50L);
+                            encoderParameters.Param[0] = qualityParam;
+                        }
+                        newBitmap.SetResolution(100, 100);
+                        newFileName = Path.Combine(folderPath, Path.GetFileNameWithoutExtension(file) + ".jpg");
+                        //newBitmap.SetResolution((float)newWidth, (float)newHeight); //çözünürlük değiştir
+                        newBitmap.Save(tempFileName, jpgEncoder, encoderParameters);
+                    }
+                }
+                // Orijinal dosyayı sil
+                File.Delete(file);
+
+                // Geçici dosyayı orijinal dosya adıyla yeniden adlandır
+                File.Move(tempFileName, newFileName);
+
+                //txtList.Text = "İşlem Tamamlandı..";
+            }
+            catch { }
+        }
         private void islem(string klasor)
         {
             try
@@ -446,7 +648,51 @@ namespace resimkucult
             }
             catch { txtList.Text = "Hata Oluştu!"; }
         }
+        private void HeicDonustur(string inputFolder, string[] Files)
+        {
+            try
+            {
 
+
+
+                // JPG'lerin kaydedileceği klasör
+                string outputFolder = Path.Combine(inputFolder, "jpg");
+
+                //// Çıktı klasörünü oluştur
+                if (!Directory.Exists(outputFolder))
+                    Directory.CreateDirectory(outputFolder);
+                string[] heicFiles = Directory.GetFiles(inputFolder, "*.heic", SearchOption.TopDirectoryOnly);
+                foreach (var heicPath in heicFiles)
+                {
+                    // Kaynak dosya adı (uzantısız)
+                    string fileName = Path.GetFileNameWithoutExtension(heicPath);
+
+                    // Çıktı dosya yolu
+                    string jpgFilePath = Path.Combine(outputFolder, fileName + ".jpg");
+
+                    using (var image = new MagickImage(heicPath))
+                    {
+                        image.Format = MagickFormat.Jpeg;
+                        image.Quality = 90; // 1-100
+
+                        // Büyük görselleri sınırla (opsiyonel)
+                        if (image.Width > 4000)
+                            image.Resize(4000, 0);
+
+                        // EXIF yönlendirmesini düzelt
+                        image.AutoOrient();
+
+                        image.Write(jpgFilePath);
+                    }
+
+                    Console.WriteLine($"✅ Dönüştürüldü: {fileName}.jpg");
+                }
+
+
+                txtList.Text = "İşlem Tamamlandı..";
+            }
+            catch { txtList.Text = "Hata Oluştu!"; }
+        }
         private static ImageCodecInfo GetEncoder(ImageFormat format)
         {
             ImageCodecInfo[] codecs = ImageCodecInfo.GetImageDecoders();
@@ -455,18 +701,6 @@ namespace resimkucult
                 if (codec.FormatID == format.Guid)
                 {
                     return codec;
-                }
-            }
-            return null;
-        }
-        private static ImageCodecInfo GetEncoderInfo(string mimeType)
-        {
-            ImageCodecInfo[] codecs = ImageCodecInfo.GetImageEncoders();
-            for (int i = 0; i < codecs.Length; i++)
-            {
-                if (codecs[i].MimeType == mimeType)
-                {
-                    return codecs[i];
                 }
             }
             return null;
