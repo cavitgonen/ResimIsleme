@@ -179,7 +179,7 @@ namespace resimkucult
         {
             var psi = new ProcessStartInfo
             {
-                FileName = fileName,
+                FileName = Application.StartupPath + @"\" + fileName,
                 Arguments = arguments,
                 UseShellExecute = false,
                 CreateNoWindow = true,
@@ -250,7 +250,7 @@ namespace resimkucult
                         try
                         {
                             Directory.CreateDirectory(outputRoot);
-                           
+
                             // Önce ImageMagick dene, yoksa Ghostscript'e düş
                             try
                             {
