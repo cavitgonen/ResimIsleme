@@ -63,19 +63,9 @@ namespace resimkucult.Properties {
         /// <summary>
         ///   System.Byte[] türünde yerelleştirilmiş bir kaynak arar.
         /// </summary>
-        internal static byte[] gsdll64 {
+        internal static byte[] gs10060w64 {
             get {
-                object obj = ResourceManager.GetObject("gsdll64", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   System.Byte[] türünde yerelleştirilmiş bir kaynak arar.
-        /// </summary>
-        internal static byte[] gswin64c {
-            get {
-                object obj = ResourceManager.GetObject("gswin64c", resourceCulture);
+                object obj = ResourceManager.GetObject("gs10060w64", resourceCulture);
                 return ((byte[])(obj));
             }
         }

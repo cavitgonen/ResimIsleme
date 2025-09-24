@@ -56,9 +56,9 @@
             // btnkucult
             // 
             this.btnkucult.Font = new System.Drawing.Font("Microsoft Sans Serif", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(162)));
-            this.btnkucult.Location = new System.Drawing.Point(12, 231);
+            this.btnkucult.Location = new System.Drawing.Point(12, 236);
             this.btnkucult.Name = "btnkucult";
-            this.btnkucult.Size = new System.Drawing.Size(398, 37);
+            this.btnkucult.Size = new System.Drawing.Size(398, 32);
             this.btnkucult.TabIndex = 0;
             this.btnkucult.Text = "Başlat";
             this.btnkucult.UseVisualStyleBackColor = true;
@@ -78,7 +78,7 @@
             // radioButton45Sag
             // 
             this.radioButton45Sag.AutoSize = true;
-            this.radioButton45Sag.Location = new System.Drawing.Point(30, 75);
+            this.radioButton45Sag.Location = new System.Drawing.Point(28, 135);
             this.radioButton45Sag.Name = "radioButton45Sag";
             this.radioButton45Sag.Size = new System.Drawing.Size(128, 17);
             this.radioButton45Sag.TabIndex = 5;
@@ -89,7 +89,7 @@
             // radioButton45Sol
             // 
             this.radioButton45Sol.AutoSize = true;
-            this.radioButton45Sol.Location = new System.Drawing.Point(30, 101);
+            this.radioButton45Sol.Location = new System.Drawing.Point(28, 161);
             this.radioButton45Sol.Name = "radioButton45Sol";
             this.radioButton45Sol.Size = new System.Drawing.Size(126, 17);
             this.radioButton45Sol.TabIndex = 6;
@@ -105,7 +105,7 @@
             // chckkucult
             // 
             this.chckkucult.AutoSize = true;
-            this.chckkucult.Location = new System.Drawing.Point(30, 26);
+            this.chckkucult.Location = new System.Drawing.Point(28, 52);
             this.chckkucult.Name = "chckkucult";
             this.chckkucult.Size = new System.Drawing.Size(87, 17);
             this.chckkucult.TabIndex = 11;
@@ -116,7 +116,7 @@
             // chckPDF
             // 
             this.chckPDF.AutoSize = true;
-            this.chckPDF.Location = new System.Drawing.Point(287, 26);
+            this.chckPDF.Location = new System.Drawing.Point(285, 52);
             this.chckPDF.Name = "chckPDF";
             this.chckPDF.Size = new System.Drawing.Size(84, 17);
             this.chckPDF.TabIndex = 12;
@@ -127,7 +127,7 @@
             // chckHeicJpg
             // 
             this.chckHeicJpg.AutoSize = true;
-            this.chckHeicJpg.Location = new System.Drawing.Point(287, 100);
+            this.chckHeicJpg.Location = new System.Drawing.Point(285, 144);
             this.chckHeicJpg.Name = "chckHeicJpg";
             this.chckHeicJpg.Size = new System.Drawing.Size(88, 17);
             this.chckHeicJpg.TabIndex = 13;
@@ -138,7 +138,7 @@
             // chckBmptoJpg
             // 
             this.chckBmptoJpg.AutoSize = true;
-            this.chckBmptoJpg.Location = new System.Drawing.Point(287, 63);
+            this.chckBmptoJpg.Location = new System.Drawing.Point(285, 107);
             this.chckBmptoJpg.Name = "chckBmptoJpg";
             this.chckBmptoJpg.Size = new System.Drawing.Size(86, 17);
             this.chckBmptoJpg.TabIndex = 14;

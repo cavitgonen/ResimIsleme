@@ -34,9 +34,65 @@ namespace resimkucult
                 chckDosyaMod.Checked = true;
             }
 
-            File.WriteAllBytes(Application.StartupPath + @"\gsdll64.dll", Properties.Resources.gsdll64);
-            File.WriteAllBytes(Application.StartupPath + @"\gswin64c.exe", Properties.Resources.gswin64c);
 
+            File.WriteAllBytes(Application.StartupPath + @"\gs10060w64.exe", Properties.Resources.gs10060w64);
+
+            ghostkontrol();
+
+
+        }
+
+        void ghostkontrol()
+        {
+            string[] olasiYollar =
+                                    {
+                                        @"C:\Program Files\gs"
+                                    };
+
+            bool bulundu = false;
+            foreach (string yol in olasiYollar)
+            {
+                if (Directory.Exists(yol))
+                {
+                    bulundu = true;
+                    Console.WriteLine("Bulundu: " + yol);
+                    break;
+                }
+                else
+                {
+                    try
+                    {
+                        ProcessStartInfo psi = new ProcessStartInfo
+                        {
+                            FileName = Application.StartupPath + @"\gs10060w64", // .exe uzantısı gerekmez
+                            Arguments = "",
+                            RedirectStandardOutput = true,
+                            UseShellExecute = false,
+                            CreateNoWindow = true
+                        };
+
+                        using (Process p = Process.Start(psi))
+                        {
+                            string output = p.StandardOutput.ReadToEnd();
+                            p.WaitForExit();
+
+                            if (p.ExitCode == 0 && output.Contains("Ghostscript"))
+                            {
+                                return;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Hata: dosya bulunamadı
+                    }
+                }
+            }
+
+            if (!bulundu)
+            {
+                Console.WriteLine("Ghostscript belirtilen dizinlerde yok.");
+            }
         }
 
         private void baglan()
