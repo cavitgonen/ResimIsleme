@@ -208,17 +208,17 @@ namespace resimkucult
         }
 
         [Obsolete]
-        private async Task ConvertPdfWithGhostscriptAsync(string pdfPath, string outputRoot, int dpi = 200, int quality = 85)
+        private async Task ConvertPdfWithGhostscriptAsync(string pdfPath, string outputRoot, int dpi = 200, int quality = 85) // Ghostscript kullanarak PDF'i JPG'ye dönüştür
         {
             string nameNoExt = Path.GetFileNameWithoutExtension(pdfPath);
-            string outPattern = Path.Combine(outputRoot, nameNoExt + ".jpg");
+            string outPattern = Path.Combine(outputRoot, nameNoExt + "_%02d.jpg");
 
             // -dJPEGQ=85 kalite, -r200 DPI, -sDEVICE=jpeg, -o out_p%03d.jpg
             string args = $"-dNOPAUSE -dBATCH -sDEVICE=jpeg -dJPEGQ={quality} -r{dpi} -o \"{outPattern}\" \"{pdfPath}\"";
 
             await RunProcessAsync("gswin64c", args);
         }
-        private async Task islemyap(string rootFolder)
+        private async Task islemyap(string rootFolder) // Klasör modu
         {
             if (string.IsNullOrWhiteSpace(rootFolder) || !Directory.Exists(rootFolder))
             {
@@ -243,13 +243,14 @@ namespace resimkucult
 
                 if (chckPDF.Checked)
                 {
-                    Directory.CreateDirectory(outputRoot);
 
                     var pdfler = Directory.EnumerateFiles(klasor, "*.pdf", SearchOption.TopDirectoryOnly);
                     foreach (var pdf in pdfler)
                     {
                         try
                         {
+                            Directory.CreateDirectory(outputRoot);
+                           
                             // Önce ImageMagick dene, yoksa Ghostscript'e düş
                             try
                             {
@@ -286,7 +287,7 @@ namespace resimkucult
 
             Log("✅ Tamam: " + outputRoot);
         }
-        private async Task islemyap(string[] files, string rootFolder)
+        private async Task islemyap(string[] files, string rootFolder) // Dosya modu
         {
             if (string.IsNullOrWhiteSpace(rootFolder) || !Directory.Exists(rootFolder))
             {
@@ -306,17 +307,17 @@ namespace resimkucult
                 await Task.Delay(500);
                 Log($"▶ Dosya: {file}");
 
-                if (chckPDF.Checked)
+                if (chckPDF.Checked) // PDF ise dönüştür
                 {
                     Directory.CreateDirectory(outputRoot);
 
 
                     try
                     {
-                        // Önce ImageMagick dene, yoksa Ghostscript'e düş
+                        //  Ghostscript'e
                         try
                         {
-                            await ConvertPdfWithGhostscriptAsync(file, outputRoot, dpi: 200, quality: 85);
+                            await ConvertPdfWithGhostscriptAsync(file, outputRoot, dpi: 200, quality: 85); // PDF ise dönüştür
                         }
                         catch (Exception)
                         {
@@ -363,7 +364,7 @@ namespace resimkucult
                 txtList.AppendText(msg + Environment.NewLine);
             }
         }
-        private void islem(string islem, string klasor)
+        private void islem(string islem, string klasor) // klasör modu
         {
             try
             {
@@ -486,7 +487,7 @@ namespace resimkucult
             }
             catch { }
         }
-        private void islem(string islem, string klasor, string file)
+        private void islem(string islem, string klasor, string file) // 
         {
             try
             {
@@ -604,7 +605,7 @@ namespace resimkucult
             }
             catch { }
         }
-        private void islem(string klasor)
+        private void islem(string klasor) // heic to jpg modu 
         {
             try
             {
@@ -657,7 +658,7 @@ namespace resimkucult
             }
             catch { txtList.Text = "Hata Oluştu!"; }
         }
-        private void HeicDonustur(string inputFolder, string[] Files)
+        private void HeicDonustur(string inputFolder, string[] Files) // heic to jpg dosya modu
         {
             try
             {
